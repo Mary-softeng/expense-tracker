@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Dashboard - {{ current_month }}</h2>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Total Budget</h5>
+                <h2>{{ "%.2f"|format(total_budget) }} KSH</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Total Spent</h5>
+                <h2>{{ "%.2f"|format(total_spent) }} KSH</h2>
+                <small>Remaining: {{ "%.2f"|format(total_budget - total_spent) }} KSH</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-graph-up"></i> Budget vs Expenses
+            </div>
+            <div class="card-body">
+                <canvas id="budgetChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list-check"></i> Category Breakdown
+            </div>
+            <div class="card-body">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i> Recent Expenses
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Amount</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in recent_expenses %}
+                            <tr>
+                                <td>{{ expense.date }}</td>
+                                <td><span class="badge bg-primary">{{ expense.category_ref.name }}</span></td>
+                                <td>{{ expense.item_name }}</td>
+                                <td>{{ expense.quantity }}</td>
+                                <td>{{ "%.2f"|format(expense.amount) }}</td>
+                                <td><strong>{{ "%.2f"|format(expense.total) }}</strong></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">No expenses recorded yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart"></i> Category Summary
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Budget</th>
+                                <th>Spent</th>
+                                <th>Remaining</th>
+                                <th>Usage</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in monthly_data %}
+                            <tr>
+                                <td><strong>{{ data.name }}</strong></td>
+                                <td>{{ "%.2f"|format(data.budget) }}</td>
+                                <td>{{ "%.2f"|format(data.spent) }}</td>
+                                <td>{{ "%.2f"|format(data.remaining) }}</td>
+                                <td>
+                                    <div class="progress">
+                                        <div class="progress-bar {% if data.percentage > 100 %}bg-danger{% elif data.percentage > 80 %}bg-warning{% else %}bg-success{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {{ data.percentage if data.percentage <= 100 else 100 }}%">
+                                            {{ "%.1f"|format(data.percentage) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if data.remaining >= 0 %}
+                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Under</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Over</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Budget Chart
+const ctx1 = document.getElementById('budgetChart').getContext('2d');
+new Chart(ctx1, {
+    type: 'bar',
+    data: {
+        labels: {{ monthly_data|map(attribute='name')|list|tojson }},
+        datasets: [
+            {
+                label: 'Budget',
+                data: {{ monthly_data|map(attribute='budget')|list|tojson }},
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Spent',
+                data: {{ monthly_data|map(attribute='spent')|list|tojson }},
+                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Pie Chart
+const ctx2 = document.getElementById('pieChart').getContext('2d');
+new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+        labels: {{ monthly_data|map(attribute='name')|list|tojson }},
+        datasets: [{
+            data: {{ monthly_data|map(attribute='spent')|list|tojson }},
+            backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

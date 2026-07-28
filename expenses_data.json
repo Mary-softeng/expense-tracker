@@ -1,0 +1,58 @@
+{
+  "Fare": {
+    "budget": 4000,
+    "expenses": [
+      {
+        "item": "Fare",
+        "amount": 100.0,
+        "quantity": 1,
+        "total": 100.0,
+        "date": "2026-07-28"
+      }
+    ]
+  },
+  "Groceries": {
+    "budget": 5000,
+    "expenses": [
+      {
+        "item": "Eggs",
+        "amount": 430.0,
+        "quantity": 30,
+        "total": 12900.0,
+        "date": "2026-07-28"
+      }
+    ]
+  },
+  "Cosmetics": {
+    "budget": 2000,
+    "expenses": []
+  },
+  "Entertainment": {
+    "budget": 3000,
+    "expenses": [
+      {
+        "item": "Netflix",
+        "amount": 300.0,
+        "quantity": 1,
+        "total": 300.0,
+        "date": "2026-07-28"
+      }
+    ]
+  },
+  "Utilities": {
+    "budget": 2000,
+    "expenses": [
+      {
+        "item": "Electricity",
+        "amount": 500.0,
+        "quantity": 1,
+        "total": 500.0,
+        "date": "2026-07-27"
+      }
+    ]
+  },
+  "Other": {
+    "budget": 1000,
+    "expenses": []
+  }
+}

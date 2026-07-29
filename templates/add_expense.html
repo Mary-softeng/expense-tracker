@@ -7,24 +7,30 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="expenseForm">
+                    <!-- Category - Now required with blank default -->
                     <div class="mb-3">
-                        <label for="category_id" class="form-label">Category</label>
+                        <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
                         <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="">-- Select Category --</option>
                             {% for category in categories %}
                             <option value="{{ category.id }}">{{ category.name }}</option>
                             {% endfor %}
                         </select>
+                        <div class="invalid-feedback">Please select a category</div>
                     </div>
                     
+                    <!-- Item Name - Now first field -->
                     <div class="mb-3">
-                        <label for="item_name" class="form-label">Item Name</label>
+                        <label for="item_name" class="form-label">Item Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="item_name" name="item_name" required placeholder="e.g., Matatu, Milk, Salon">
+                        <div class="invalid-feedback">Please enter an item name</div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="amount" class="form-label">Amount (KSH)</label>
+                        <label for="amount" class="form-label">Amount (KSH) <span class="text-danger">*</span></label>
                         <input type="number" step="0.01" class="form-control" id="amount" name="amount" required placeholder="0.00">
+                        <div class="invalid-feedback">Please enter a valid amount</div>
                     </div>
                     
                     <div class="mb-3">
@@ -43,52 +49,85 @@
                 </form>
             </div>
         </div>
+        
+        <!-- Add Category Section -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-folder-plus"></i> Add New Category
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_category') }}">
+                    <div class="row g-2">
+                        <div class="col-7">
+                            <input type="text" class="form-control" name="category_name" placeholder="Category Name" required>
+                        </div>
+                        <div class="col-3">
+                            <input type="number" step="0.01" class="form-control" name="category_budget" placeholder="Budget" value="0">
+                        </div>
+                        <div class="col-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
     
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
                 <i class="bi bi-lightning"></i> Quick Add
+                <small class="text-muted">(Click to fill form, then edit if needed)</small>
             </div>
             <div class="card-body">
                 <div class="row g-2">
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Fare', 'Matatu', 50)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Fare" data-item="Matatu" data-amount="50">
                             🚌 Matatu 50
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Milk', 150)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Groceries" data-item="Milk" data-amount="150">
                             🥛 Milk 150
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Eggs', 80)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Groceries" data-item="Eggs" data-amount="80">
                             🥚 Eggs 80
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Tomatoes', 100)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Groceries" data-item="Tomatoes" data-amount="100">
                             🍅 Tomatoes 100
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Meat', 400)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Groceries" data-item="Meat" data-amount="400">
                             🥩 Meat 400
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Onions', 50)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Groceries" data-item="Onions" data-amount="50">
                             🧅 Onions 50
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Cosmetics', 'Salon', 500)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Cosmetics" data-item="Salon" data-amount="500">
                             💇 Salon 500
                         </button>
                     </div>
                     <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Entertainment', 'Movie', 300)">
+                        <button class="btn btn-outline-primary w-100 quick-add-btn" 
+                                data-category="Entertainment" data-item="Movie" data-amount="300">
                             🎬 Movie 300
                         </button>
                     </div>
@@ -105,7 +144,7 @@
                     <li><i class="bi bi-check-circle text-success"></i> Enter daily expenses as they occur</li>
                     <li><i class="bi bi-check-circle text-success"></i> Use quantity for multiple items</li>
                     <li><i class="bi bi-check-circle text-success"></i> Track all categories to see complete picture</li>
-                    <li><i class="bi bi-check-circle text-success"></i> Quick add saves time for common items</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Click quick add then edit before submitting</li>
                 </ul>
             </div>
         </div>
@@ -113,30 +152,76 @@
 </div>
 
 <script>
-function quickAdd(category, item, amount) {
-    // Get category ID from dropdown
-    const select = document.getElementById('category_id');
-    const options = select.options;
-    let categoryId = null;
-    
-    for (let i = 0; i < options.length; i++) {
-        if (options[i].text === category) {
-            categoryId = options[i].value;
-            break;
-        }
-    }
-    
-    if (categoryId) {
-        select.value = categoryId;
-        document.getElementById('item_name').value = item;
-        document.getElementById('amount').value = amount;
-        document.getElementById('quantity').value = 1;
+// Quick Add - Fill form but don't submit automatically
+document.querySelectorAll('.quick-add-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const category = this.dataset.category;
+        const item = this.dataset.item;
+        const amount = this.dataset.amount;
         
-        // Auto-submit
-        document.querySelector('form').submit();
-    } else {
-        alert('Category not found! Please add the category first.');
+        // Find and select category
+        const select = document.getElementById('category_id');
+        const options = select.options;
+        let categoryId = null;
+        
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].text === category) {
+                categoryId = options[i].value;
+                break;
+            }
+        }
+        
+        if (categoryId) {
+            select.value = categoryId;
+            document.getElementById('item_name').value = item;
+            document.getElementById('amount').value = amount;
+            document.getElementById('quantity').value = 1;
+            
+            // Highlight the fields to show they've been filled
+            select.style.borderColor = '#198754';
+            document.getElementById('item_name').style.borderColor = '#198754';
+            document.getElementById('amount').style.borderColor = '#198754';
+            
+            // Scroll to the form
+            document.getElementById('expenseForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // Flash message
+            const flashDiv = document.createElement('div');
+            flashDiv.className = 'alert alert-info alert-dismissible fade show';
+            flashDiv.innerHTML = `
+                <i class="bi bi-check-circle"></i> Form filled! Review and click "Add Expense" to submit.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container').insertBefore(flashDiv, document.querySelector('.row'));
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (flashDiv) {
+                    const bsAlert = new bootstrap.Alert(flashDiv);
+                    bsAlert.close();
+                }
+            }, 5000);
+        } else {
+            alert('Category "' + category + '" not found! Please add it first.');
+        }
+    });
+});
+
+// Form validation - ensure category is selected
+document.getElementById('expenseForm').addEventListener('submit', function(e) {
+    const categorySelect = document.getElementById('category_id');
+    if (categorySelect.value === '') {
+        e.preventDefault();
+        categorySelect.classList.add('is-invalid');
+        alert('Please select a category before submitting.');
     }
-}
+});
+
+// Remove invalid class on change
+document.getElementById('category_id').addEventListener('change', function() {
+    if (this.value !== '') {
+        this.classList.remove('is-invalid');
+    }
+});
 </script>
 {% endblock %}

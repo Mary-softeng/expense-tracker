@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import json
 import os
+import pandas as pd
+from io import BytesIO
 from sqlalchemy import func
 
 app = Flask(__name__)
@@ -56,12 +58,10 @@ def init_db():
 @app.route('/')
 def index():
     """Home page - landing page"""
-    # Get summary stats for the landing page
     total_expenses = Expense.query.count()
     total_amount = db.session.query(func.sum(Expense.total)).scalar() or 0
     categories = Category.query.count()
     
-    # Get current month spending
     current_month = datetime.now().strftime('%Y-%m')
     monthly_spent = db.session.query(func.sum(Expense.total)).filter(
         Expense.date.like(f'{current_month}%')
@@ -78,10 +78,8 @@ def dashboard():
     """Dashboard with summary and charts"""
     categories = Category.query.all()
     
-    # Get current month
     current_month = datetime.now().strftime('%Y-%m')
     
-    # Calculate monthly totals
     monthly_data = []
     total_budget = 0
     total_spent = 0
@@ -131,8 +129,16 @@ def add_expense():
         date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
         
         # Validate
-        if not all([category_id, item_name, amount]):
-            flash('Please fill all required fields', 'error')
+        if not category_id:
+            flash('Please select a category', 'error')
+            return render_template('add_expense.html', categories=categories, now=datetime.now())
+        
+        if not item_name:
+            flash('Please enter an item name', 'error')
+            return render_template('add_expense.html', categories=categories, now=datetime.now())
+        
+        if not amount:
+            flash('Please enter an amount', 'error')
             return render_template('add_expense.html', categories=categories, now=datetime.now())
         
         try:
@@ -162,6 +168,79 @@ def add_expense():
     
     return render_template('add_expense.html', categories=categories, now=datetime.now())
 
+@app.route('/add_category', methods=['POST'])
+def add_category():
+    """Add a new category"""
+    category_name = request.form.get('category_name')
+    category_budget = request.form.get('category_budget', 0)
+    
+    if not category_name:
+        flash('Please enter a category name', 'error')
+        return redirect(url_for('add_expense'))
+    
+    # Check if category already exists
+    existing = Category.query.filter_by(name=category_name).first()
+    if existing:
+        flash(f'Category "{category_name}" already exists!', 'error')
+        return redirect(url_for('add_expense'))
+    
+    try:
+        new_category = Category(name=category_name, budget=float(category_budget))
+        db.session.add(new_category)
+        db.session.commit()
+        flash(f'Category "{category_name}" added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding category: {str(e)}', 'error')
+        db.session.rollback()
+    
+    return redirect(url_for('add_expense'))
+
+@app.route('/edit/<int:expense_id>', methods=['GET', 'POST'])
+def edit_expense(expense_id):
+    """Edit an existing expense"""
+    expense = Expense.query.get_or_404(expense_id)
+    categories = Category.query.all()
+    
+    if request.method == 'POST':
+        category_id = request.form.get('category_id')
+        item_name = request.form.get('item_name')
+        amount = request.form.get('amount')
+        quantity = request.form.get('quantity', 1)
+        date_str = request.form.get('date')
+        
+        # Validate
+        if not category_id:
+            flash('Please select a category', 'error')
+            return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+        
+        if not item_name:
+            flash('Please enter an item name', 'error')
+            return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+        
+        if not amount:
+            flash('Please enter an amount', 'error')
+            return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+        
+        try:
+            expense.category_id = int(category_id)
+            expense.item_name = item_name
+            expense.amount = float(amount)
+            expense.quantity = int(quantity)
+            expense.total = float(amount) * int(quantity)
+            expense.date = date_str
+            
+            db.session.commit()
+            flash('Expense updated successfully!', 'success')
+            return redirect(url_for('view_expenses'))
+            
+        except ValueError as e:
+            flash(f'Invalid input: {str(e)}', 'error')
+        except Exception as e:
+            flash(f'Error updating expense: {str(e)}', 'error')
+            db.session.rollback()
+    
+    return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+
 @app.route('/expenses')
 def view_expenses():
     """View all expenses with filtering"""
@@ -187,6 +266,60 @@ def view_expenses():
                          category_filter=category_filter,
                          date_filter=date_filter,
                          total=total)
+
+@app.route('/export_excel')
+def export_excel():
+    """Export expenses to Excel"""
+    category_filter = request.args.get('category', 'All')
+    date_filter = request.args.get('date', '')
+    
+    query = Expense.query.join(Category)
+    
+    if category_filter != 'All':
+        query = query.filter(Category.name == category_filter)
+    
+    if date_filter:
+        query = query.filter(Expense.date == date_filter)
+    
+    expenses = query.order_by(Expense.date.desc()).all()
+    
+    # Prepare data for Excel
+    data = []
+    for expense in expenses:
+        data.append({
+            'Date': expense.date,
+            'Category': expense.category_ref.name,
+            'Item Name': expense.item_name,
+            'Quantity': expense.quantity,
+            'Amount (KSH)': expense.amount,
+            'Total (KSH)': expense.total
+        })
+    
+    # Create DataFrame
+    df = pd.DataFrame(data)
+    
+    # Create Excel file in memory
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Expenses', index=False)
+        
+        # Auto-adjust column widths
+        for column in df:
+            column_length = max(df[column].astype(str).map(len).max(), len(column))
+            col_idx = df.columns.get_loc(column)
+            writer.sheets['Expenses'].column_dimensions[chr(65 + col_idx)].width = column_length + 2
+    
+    output.seek(0)
+    
+    # Generate filename
+    filename = f"expenses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
 
 @app.route('/budgets', methods=['GET', 'POST'])
 def manage_budgets():
@@ -304,3 +437,4 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+

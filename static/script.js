@@ -24,6 +24,8 @@ function filterExpenses() {
     const input = document.getElementById('searchInput');
     const filter = input.value.toUpperCase();
     const table = document.getElementById('expenseTable');
+    if (!table) return;
+    
     const rows = table.getElementsByTagName('tr');
     
     for (let i = 1; i < rows.length; i++) {
@@ -39,3 +41,6 @@ function filterExpenses() {
         rows[i].style.display = found ? '' : 'none';
     }
 }
+
+// Debug function
+console.log('Expense Tracker loaded successfully!');

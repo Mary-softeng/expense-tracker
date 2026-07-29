@@ -30,7 +30,7 @@
                 <i class="bi bi-graph-up"></i> Budget vs Expenses
             </div>
             <div class="card-body">
-                <canvas id="budgetChart"></canvas>
+                <canvas id="budgetChart" style="width:100%; height:300px;"></canvas>
             </div>
         </div>
     </div>
@@ -40,7 +40,7 @@
                 <i class="bi bi-list-check"></i> Category Breakdown
             </div>
             <div class="card-body">
-                <canvas id="pieChart"></canvas>
+                <canvas id="pieChart" style="width:100%; height:300px;"></canvas>
             </div>
         </div>
     </div>
@@ -141,78 +141,130 @@
 </div>
 
 <script>
-// Budget Chart
-const ctx1 = document.getElementById('budgetChart').getContext('2d');
-new Chart(ctx1, {
-    type: 'bar',
-    data: {
-        labels: {{ monthly_data|map(attribute='name')|list|tojson }},
-        datasets: [
-            {
-                label: 'Budget',
-                data: {{ monthly_data|map(attribute='budget')|list|tojson }},
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 2
+// Wait for DOM to load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get data from Flask
+    const monthlyData = {{ monthly_data|tojson|safe }};
+    
+    console.log('Monthly Data:', monthlyData); // Debug: Check data in console
+    
+    // Extract labels and values
+    const categories = monthlyData.map(item => item.name);
+    const budgets = monthlyData.map(item => item.budget);
+    const spent = monthlyData.map(item => item.spent);
+    
+    // Budget vs Expenses Chart (Bar Chart)
+    const ctx1 = document.getElementById('budgetChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: categories,
+            datasets: [
+                {
+                    label: 'Budget',
+                    data: budgets,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'Spent',
+                    data: spent,
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
             },
-            {
-                label: 'Spent',
-                data: {{ monthly_data|map(attribute='spent')|list|tojson }},
-                backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 2
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return 'KSH ' + value;
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'KSH ' + value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0
                     }
                 }
             }
-        },
-        plugins: {
-            legend: {
-                position: 'top',
-            }
         }
+    });
+    
+    // Category Breakdown (Pie Chart) - Only show categories with expenses
+    const pieData = monthlyData.filter(item => item.spent > 0);
+    const pieLabels = pieData.map(item => item.name);
+    const pieValues = pieData.map(item => item.spent);
+    
+    // Colors for pie chart
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+        '#FF8A80', '#80D8FF', '#FFFF8D', '#A5D6A7', '#CE93D8', '#FFAB91'
+    ];
+    
+    const ctx2 = document.getElementById('pieChart').getContext('2d');
+    
+    if (pieValues.length > 0) {
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    data: pieValues,
+                    backgroundColor: colors.slice(0, pieValues.length),
+                    borderColor: '#ffffff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                size: 11
+                            },
+                            padding: 10
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    } else {
+        // Show message if no expenses
+        ctx2.canvas.parentElement.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox fs-1 d-block"></i>
+                <p class="mt-2">No expenses recorded yet</p>
+                <small>Add expenses to see breakdown</small>
+            </div>
+        `;
     }
 });
 
-// Pie Chart
-const ctx2 = document.getElementById('pieChart').getContext('2d');
-new Chart(ctx2, {
-    type: 'doughnut',
-    data: {
-        labels: {{ monthly_data|map(attribute='name')|list|tojson }},
-        datasets: [{
-            data: {{ monthly_data|map(attribute='spent')|list|tojson }},
-            backgroundColor: [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
-            ],
-            borderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    font: {
-                        size: 11
-                    }
-                }
-            }
-        }
-    }
-});
+// Auto-refresh dashboard every 30 seconds (optional)
+// setTimeout(function() {
+//     location.reload();
+// }, 30000);
 </script>
 {% endblock %}

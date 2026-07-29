@@ -299,6 +299,8 @@ def internal_error(error):
 def inject_now():
     return {'now': datetime.now()}
 
+# Call init_db() at module level so Gunicorn runs it on startup
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -55,8 +55,68 @@ def init_db():
 # Routes
 @app.route('/')
 def index():
-    """Home page - redirect to dashboard"""
-    return redirect(url_for('dashboard'))
+    """Home page - landing page"""
+    # Get summary stats for the landing page
+    total_expenses = Expense.query.count()
+    total_amount = db.session.query(func.sum(Expense.total)).scalar() or 0
+    categories = Category.query.count()
+    
+    # Get current month spending
+    current_month = datetime.now().strftime('%Y-%m')
+    monthly_spent = db.session.query(func.sum(Expense.total)).filter(
+        Expense.date.like(f'{current_month}%')
+    ).scalar() or 0
+    
+    return render_template('index.html',
+                         total_expenses=total_expenses,
+                         total_amount=float(total_amount),
+                         categories=categories,
+                         monthly_spent=float(monthly_spent))
+
+@app.route('/dashboard')
+def dashboard():
+    """Dashboard with summary and charts"""
+    categories = Category.query.all()
+    
+    # Get current month
+    current_month = datetime.now().strftime('%Y-%m')
+    
+    # Calculate monthly totals
+    monthly_data = []
+    total_budget = 0
+    total_spent = 0
+    
+    for category in categories:
+        monthly_spent = db.session.query(func.sum(Expense.total)).filter(
+            Expense.category_id == category.id,
+            Expense.date.like(f'{current_month}%')
+        ).scalar() or 0
+        
+        monthly_spent = float(monthly_spent) if monthly_spent else 0.0
+        
+        total_spent += monthly_spent
+        total_budget += category.budget
+        
+        percentage = (monthly_spent / category.budget * 100) if category.budget > 0 else 0
+        
+        monthly_data.append({
+            'name': category.name,
+            'budget': float(category.budget),
+            'spent': monthly_spent,
+            'remaining': float(category.budget - monthly_spent),
+            'percentage': float(min(percentage, 100))
+        })
+    
+    recent_expenses = Expense.query.join(Category).order_by(
+        Expense.date.desc(), Expense.created_at.desc()
+    ).limit(10).all()
+    
+    return render_template('dashboard.html',
+                         monthly_data=monthly_data,
+                         recent_expenses=recent_expenses,
+                         total_budget=float(total_budget),
+                         total_spent=float(total_spent),
+                         current_month=current_month)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_expense():
@@ -127,58 +187,6 @@ def view_expenses():
                          category_filter=category_filter,
                          date_filter=date_filter,
                          total=total)
-
-@app.route('/dashboard')
-def dashboard():
-    """Dashboard with summary and charts"""
-    categories = Category.query.all()
-    
-    # Get current month
-    current_month = datetime.now().strftime('%Y-%m')
-    
-    # Calculate monthly totals
-    monthly_data = []
-    total_budget = 0
-    total_spent = 0
-    
-    for category in categories:
-        # Get expenses for this category in current month
-        monthly_spent = db.session.query(func.sum(Expense.total)).filter(
-            Expense.category_id == category.id,
-            Expense.date.like(f'{current_month}%')
-        ).scalar() or 0
-        
-        # Convert to float (handle None)
-        monthly_spent = float(monthly_spent) if monthly_spent else 0.0
-        
-        total_spent += monthly_spent
-        total_budget += category.budget
-        
-        # Calculate percentage
-        percentage = (monthly_spent / category.budget * 100) if category.budget > 0 else 0
-        
-        monthly_data.append({
-            'name': category.name,
-            'budget': float(category.budget),
-            'spent': monthly_spent,
-            'remaining': float(category.budget - monthly_spent),
-            'percentage': float(min(percentage, 100))  # Cap at 100% for display
-        })
-    
-    # Get recent expenses
-    recent_expenses = Expense.query.join(Category).order_by(
-        Expense.date.desc(), Expense.created_at.desc()
-    ).limit(10).all()
-    
-    # Debug print (check console)
-    print("Monthly Data:", monthly_data)
-    
-    return render_template('dashboard.html',
-                         monthly_data=monthly_data,
-                         recent_expenses=recent_expenses,
-                         total_budget=float(total_budget),
-                         total_spent=float(total_spent),
-                         current_month=current_month)
 
 @app.route('/budgets', methods=['GET', 'POST'])
 def manage_budgets():

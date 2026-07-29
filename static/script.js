@@ -22,6 +22,8 @@ function formatCurrency(amount) {
 // Live search/filter for expenses
 function filterExpenses() {
     const input = document.getElementById('searchInput');
+    if (!input) return;
+    
     const filter = input.value.toUpperCase();
     const table = document.getElementById('expenseTable');
     if (!table) return;
@@ -43,4 +45,16 @@ function filterExpenses() {
 }
 
 // Debug function
-console.log('Expense Tracker loaded successfully!');
+console.log('💰 Expense Tracker loaded successfully!');
+
+// PWA Support - Service Worker Registration (for future PWA)
+if ('serviceWorker' in navigator) {
+    // Uncomment when ready for PWA
+    // navigator.serviceWorker.register('/static/service-worker.js')
+    //     .then(function(registration) {
+    //         console.log('Service Worker registered successfully');
+    //     })
+    //     .catch(function(error) {
+    //         console.log('Service Worker registration failed:', error);
+    //     });
+}

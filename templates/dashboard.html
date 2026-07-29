@@ -51,6 +51,9 @@
         <div class="card">
             <div class="card-header">
                 <i class="bi bi-clock-history"></i> Recent Expenses
+                <a href="{{ url_for('view_expenses') }}" class="btn btn-sm btn-outline-primary float-end">
+                    View All <i class="bi bi-arrow-right"></i>
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -77,7 +80,13 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6" class="text-center">No expenses recorded yet</td>
+                                <td colspan="6" class="text-center py-3">
+                                    <i class="bi bi-inbox fs-3 d-block"></i>
+                                    <p class="mb-0">No expenses recorded yet</p>
+                                    <a href="{{ url_for('add_expense') }}" class="btn btn-sm btn-primary mt-2">
+                                        Add Your First Expense <i class="bi bi-plus-circle"></i>
+                                    </a>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -146,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get data from Flask
     const monthlyData = {{ monthly_data|tojson|safe }};
     
-    console.log('Monthly Data:', monthlyData); // Debug: Check data in console
+    console.log('Monthly Data:', monthlyData); // Debug
     
     // Extract labels and values
     const categories = monthlyData.map(item => item.name);
@@ -183,9 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 legend: {
                     position: 'top',
                     labels: {
-                        font: {
-                            size: 12
-                        }
+                        font: { size: 12 }
                     }
                 }
             },
@@ -213,7 +220,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const pieLabels = pieData.map(item => item.name);
     const pieValues = pieData.map(item => item.spent);
     
-    // Colors for pie chart
     const colors = [
         '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
         '#FF8A80', '#80D8FF', '#FFFF8D', '#A5D6A7', '#CE93D8', '#FFAB91'
@@ -240,9 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            font: {
-                                size: 11
-                            },
+                            font: { size: 11 },
                             padding: 10
                         }
                     }
@@ -261,10 +265,5 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 });
-
-// Auto-refresh dashboard every 30 seconds (optional)
-// setTimeout(function() {
-//     location.reload();
-// }, 30000);
 </script>
 {% endblock %}

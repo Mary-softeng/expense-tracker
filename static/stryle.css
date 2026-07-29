@@ -1,0 +1,199 @@
+/* Custom styles */
+:root {
+    --primary-color: #0d6efd;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+}
+
+body {
+    background-color: #f8f9fa;
+    padding-bottom: 70px; /* Space for bottom nav on mobile */
+}
+
+.navbar-brand i {
+    margin-right: 8px;
+}
+
+.card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: none;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.progress {
+    height: 22px;
+    margin: 3px 0;
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    font-size: 11px;
+    line-height: 22px;
+    font-weight: bold;
+    border-radius: 10px;
+}
+
+.badge {
+    font-size: 85%;
+    padding: 5px 10px;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table td, .table th {
+        padding: 6px 4px;
+    }
+    
+    .btn {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    
+    .card-title {
+        font-size: 14px;
+    }
+    
+    h2 {
+        font-size: 20px;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .card-body {
+        padding: 12px;
+    }
+    
+    .form-control, .form-select {
+        font-size: 16px; /* Prevents zoom on mobile */
+        padding: 10px;
+    }
+    
+    /* Home page stats */
+    .col-6 .card .card-body h3 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .progress {
+        height: 18px;
+    }
+    
+    .progress-bar {
+        font-size: 10px;
+        line-height: 18px;
+    }
+    
+    .badge {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    h2 {
+        font-size: 18px;
+    }
+    
+    .navbar-brand {
+        font-size: 16px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .navbar, .btn, .no-print, .fixed-bottom {
+        display: none !important;
+    }
+    
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+}
+
+/* Touch friendly buttons */
+.btn {
+    border-radius: 8px;
+    touch-action: manipulation;
+}
+
+/* Smooth transitions */
+.alert, .card, .btn {
+    transition: all 0.2s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Hero section on home page */
+.bg-primary .card-body {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border-radius: 12px;
+}
+
+/* Stats cards animation */
+.col-6 .card, .col-md-3 .card {
+    transition: transform 0.2s ease;
+}
+
+.col-6 .card:hover, .col-md-3 .card:hover {
+    transform: translateY(-3px);
+}
+
+/* Feature cards icons */
+.bg-primary.bg-opacity-10 {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.bg-success.bg-opacity-10 {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+}
+
+.bg-warning.bg-opacity-10 {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.bg-info.bg-opacity-10 {
+    background-color: rgba(13, 202, 240, 0.1) !important;
+}

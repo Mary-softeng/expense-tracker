@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-10 col-lg-8">
+        <!-- Hero Section -->
+        <div class="card bg-primary text-white text-center mb-4">
+            <div class="card-body py-5">
+                <h1 class="display-4 mb-3">
+                    <i class="bi bi-wallet2"></i> Expense Tracker
+                </h1>
+                <p class="lead">Take control of your finances with smart budgeting</p>
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
+                    <a href="{{ url_for('add_expense') }}" class="btn btn-light btn-lg px-4">
+                        <i class="bi bi-plus-circle"></i> Add Expense
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Total Expenses</h5>
+                        <h3 class="mb-0">{{ total_expenses }}</h3>
+                        <small class="text-muted">items</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Total Spent</h5>
+                        <h3 class="mb-0">{{ "%.0f"|format(total_amount) }}</h3>
+                        <small class="text-muted">KSH</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">Categories</h5>
+                        <h3 class="mb-0">{{ categories }}</h3>
+                        <small class="text-muted">active</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title text-muted">This Month</h5>
+                        <h3 class="mb-0">{{ "%.0f"|format(monthly_spent) }}</h3>
+                        <small class="text-muted">KSH spent</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                                <i class="bi bi-plus-circle text-primary fs-3"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Add Expenses</h5>
+                                <small class="text-muted">Quick and easy entry</small>
+                            </div>
+                        </div>
+                        <p>Record daily expenses with category, amount, quantity, and date. Use quick add for common items.</p>
+                        <a href="{{ url_for('add_expense') }}" class="btn btn-outline-primary btn-sm">
+                            Add Now <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
+                                <i class="bi bi-graph-up text-success fs-3"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Dashboard</h5>
+                                <small class="text-muted">Visual insights</small>
+                            </div>
+                        </div>
+                        <p>View spending patterns with charts, track budget vs expenses, and identify areas for improvement.</p>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-success btn-sm">
+                            View Dashboard <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
+                                <i class="bi bi-wallet text-warning fs-3"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Set Budgets</h5>
+                                <small class="text-muted">Control spending</small>
+                            </div>
+                        </div>
+                        <p>Set monthly budgets for each category and track your progress with visual indicators.</p>
+                        <a href="{{ url_for('manage_budgets') }}" class="btn btn-outline-warning btn-sm">
+                            Manage Budgets <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                                <i class="bi bi-list-check text-info fs-3"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">Track Expenses</h5>
+                                <small class="text-muted">Review and filter</small>
+                            </div>
+                        </div>
+                        <p>View all expenses with filtering by category and date. Delete or clear expenses as needed.</p>
+                        <a href="{{ url_for('view_expenses') }}" class="btn btn-outline-info btn-sm">
+                            View All <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Start Guide -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-rocket"></i> Quick Start Guide
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 col-md-6">
+                        <h6>1. Set Your Budgets</h6>
+                        <p class="small text-muted">Go to Budgets page and set monthly limits for each category</p>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <h6>2. Add Daily Expenses</h6>
+                        <p class="small text-muted">Record every expense as it happens for accurate tracking</p>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <h6>3. Monitor Dashboard</h6>
+                        <p class="small text-muted">Check your dashboard regularly to stay on track</p>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <h6>4. Adjust as Needed</h6>
+                        <p class="small text-muted">Review spending patterns and adjust budgets accordingly</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

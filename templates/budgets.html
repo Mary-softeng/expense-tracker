@@ -15,6 +15,7 @@
                     <div class="mb-3">
                         <label class="form-label">{{ category.name }}</label>
                         <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-tag"></i></span>
                             <input type="number" step="0.01" class="form-control" 
                                    name="budget_{{ category.id }}" value="{{ category.budget }}" required>
                             <span class="input-group-text">KSH</span>
@@ -34,12 +35,34 @@
                 <i class="bi bi-lightbulb"></i> Budgeting Tips
             </div>
             <div class="card-body">
-                <ul>
-                    <li>Start with essential categories (Fare, Groceries)</li>
-                    <li>Allocate 50% for needs, 30% for wants, 20% for savings</li>
-                    <li>Review and adjust budgets monthly based on spending patterns</li>
+                <ul class="mb-0">
+                    <li class="mb-2">Start with essential categories (Fare, Groceries)</li>
+                    <li class="mb-2">Allocate 50% for needs, 30% for wants, 20% for savings</li>
+                    <li class="mb-2">Review and adjust budgets monthly based on spending patterns</li>
                     <li>Aim to stay under budget in all categories</li>
                 </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-currency-exchange"></i> Budget Guidelines
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h6>Needs</h6>
+                        <span class="badge bg-primary">50%</span>
+                    </div>
+                    <div class="col-4">
+                        <h6>Wants</h6>
+                        <span class="badge bg-warning">30%</span>
+                    </div>
+                    <div class="col-4">
+                        <h6>Savings</h6>
+                        <span class="badge bg-success">20%</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

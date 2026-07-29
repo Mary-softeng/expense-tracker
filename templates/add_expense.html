@@ -19,12 +19,12 @@
                     
                     <div class="mb-3">
                         <label for="item_name" class="form-label">Item Name</label>
-                        <input type="text" class="form-control" id="item_name" name="item_name" required>
+                        <input type="text" class="form-control" id="item_name" name="item_name" required placeholder="e.g., Matatu, Milk, Salon">
                     </div>
                     
                     <div class="mb-3">
                         <label for="amount" class="form-label">Amount (KSH)</label>
-                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" required placeholder="0.00">
                     </div>
                     
                     <div class="mb-3">
@@ -34,7 +34,7 @@
                     
                     <div class="mb-3">
                         <label for="date" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="date" name="date" value="{{ datetime.now().strftime('%Y-%m-%d') }}">
+                        <input type="date" class="form-control" id="date" name="date" value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
                     </div>
                     
                     <button type="submit" class="btn btn-primary w-100">
@@ -54,32 +54,42 @@
                 <div class="row g-2">
                     <div class="col-6">
                         <button class="btn btn-outline-primary w-100" onclick="quickAdd('Fare', 'Matatu', 50)">
-                            Matatu 50KSH
+                            🚌 Matatu 50KSH
                         </button>
                     </div>
                     <div class="col-6">
                         <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Milk', 150)">
-                            Milk 150KSH
+                            🥛 Milk 150KSH
                         </button>
                     </div>
                     <div class="col-6">
                         <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Eggs', 80)">
-                            Eggs 80KSH
+                            🥚 Eggs 80KSH
                         </button>
                     </div>
                     <div class="col-6">
                         <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Tomatoes', 100)">
-                            Tomatoes 100KSH
+                            🍅 Tomatoes 100KSH
                         </button>
                     </div>
                     <div class="col-6">
                         <button class="btn btn-outline-primary w-100" onclick="quickAdd('Cosmetics', 'Salon', 500)">
-                            Salon 500KSH
+                            💇 Salon 500KSH
                         </button>
                     </div>
                     <div class="col-6">
                         <button class="btn btn-outline-primary w-100" onclick="quickAdd('Entertainment', 'Movie', 300)">
-                            Movie 300KSH
+                            🎬 Movie 300KSH
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Groceries', 'Meat', 400)">
+                            🥩 Meat 400KSH
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-outline-primary w-100" onclick="quickAdd('Utilities', 'Electricity', 1000)">
+                            💡 Electricity 1000KSH
                         </button>
                     </div>
                 </div>
@@ -95,6 +105,7 @@
                     <li><i class="bi bi-check-circle text-success"></i> Enter daily expenses as they occur</li>
                     <li><i class="bi bi-check-circle text-success"></i> Use quantity for multiple items</li>
                     <li><i class="bi bi-check-circle text-success"></i> Track all categories to see complete picture</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Quick add saves time for common items</li>
                 </ul>
             </div>
         </div>
@@ -124,7 +135,7 @@ function quickAdd(category, item, amount) {
         // Auto-submit
         document.querySelector('form').submit();
     } else {
-        alert('Category not found!');
+        alert('Category not found! Please add the category first.');
     }
 }
 </script>

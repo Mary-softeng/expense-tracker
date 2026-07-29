@@ -28,7 +28,7 @@ class Expense(db.Model):
     total = db.Column(db.Float, nullable=False)
     date = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.String(100), default='default')  # For multi-user support
+    user_id = db.Column(db.String(100), default='default')
 
 # Initialize database with default categories
 def init_db():
@@ -73,7 +73,7 @@ def add_expense():
         # Validate
         if not all([category_id, item_name, amount]):
             flash('Please fill all required fields', 'error')
-            return render_template('add_expense.html', categories=categories)
+            return render_template('add_expense.html', categories=categories, now=datetime.now())
         
         try:
             amount = float(amount)
@@ -100,7 +100,7 @@ def add_expense():
             flash(f'Error adding expense: {str(e)}', 'error')
             db.session.rollback()
     
-    return render_template('add_expense.html', categories=categories)
+    return render_template('add_expense.html', categories=categories, now=datetime.now())
 
 @app.route('/expenses')
 def view_expenses():
@@ -275,6 +275,11 @@ def not_found(error):
 def internal_error(error):
     db.session.rollback()
     return render_template('500.html'), 500
+
+# Context processor to make datetime available in all templates
+@app.context_processor
+def inject_now():
+    return {'now': datetime.now()}
 
 if __name__ == '__main__':
     init_db()

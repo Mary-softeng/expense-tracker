@@ -9,7 +9,14 @@ from sqlalchemy import func
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///expenses.db'
+# Change this in app.py:
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///expenses.db'
+
+# To this:
+import os
+db_dir = os.path.join(app.root_path, 'data')
+os.makedirs(db_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_dir, "expenses.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)

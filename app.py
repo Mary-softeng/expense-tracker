@@ -1,11 +1,13 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy import func
+import csv
+from io import StringIO, BytesIO
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
 # Database configuration
 database_url = os.environ.get('DATABASE_URL')
@@ -14,7 +16,6 @@ if database_url:
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # Use SQLite with persistent disk on Render
     data_dir = '/data' if os.path.exists('/data') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
@@ -74,7 +75,7 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    """Home page"""
+    """Home page - landing page"""
     try:
         total_expenses = Expense.query.count()
         total_amount = db.session.query(func.sum(Expense.total)).scalar() or 0
@@ -90,11 +91,16 @@ def index():
                              categories=categories,
                              monthly_spent=float(monthly_spent))
     except Exception as e:
-        return f"<h1>Error on Home Page</h1><p>{str(e)}</p>"
+        print(f"Index error: {str(e)}")
+        return render_template('index.html', 
+                             total_expenses=0, 
+                             total_amount=0, 
+                             categories=0, 
+                             monthly_spent=0)
 
 @app.route('/dashboard')
 def dashboard():
-    """Dashboard"""
+    """Dashboard with summary and charts"""
     try:
         categories = Category.query.all()
         current_month = datetime.now().strftime('%Y-%m')
@@ -131,12 +137,22 @@ def dashboard():
                              total_spent=float(total_spent),
                              current_month=current_month)
     except Exception as e:
-        return f"<h1>Error on Dashboard</h1><p>{str(e)}</p>"
+        print(f"Dashboard error: {str(e)}")
+        return render_template('dashboard.html',
+                             monthly_data=[],
+                             recent_expenses=[],
+                             total_budget=0,
+                             total_spent=0,
+                             current_month=datetime.now().strftime('%Y-%m'))
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_expense():
-    """Add expense"""
-    categories = Category.query.all()
+    """Add a new expense"""
+    try:
+        categories = Category.query.all()
+    except Exception as e:
+        print(f"Error loading categories: {str(e)}")
+        categories = []
     
     if request.method == 'POST':
         category_id = request.form.get('category_id')
@@ -145,8 +161,17 @@ def add_expense():
         quantity = request.form.get('quantity', 1)
         date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
         
-        if not category_id or not item_name or not amount:
-            flash('Please fill all required fields', 'error')
+        # Validate
+        if not category_id:
+            flash('Please select a category', 'error')
+            return render_template('add_expense.html', categories=categories, now=datetime.now())
+        
+        if not item_name:
+            flash('Please enter an item name', 'error')
+            return render_template('add_expense.html', categories=categories, now=datetime.now())
+        
+        if not amount:
+            flash('Please enter an amount', 'error')
             return render_template('add_expense.html', categories=categories, now=datetime.now())
         
         try:
@@ -162,48 +187,258 @@ def add_expense():
                 total=total,
                 date=date_str
             )
+            
             db.session.add(expense)
             db.session.commit()
-            flash('Expense added successfully!', 'success')
+            flash(f'Expense added successfully! {item_name} - {total:.2f} KSH', 'success')
             return redirect(url_for('add_expense'))
+            
+        except ValueError as e:
+            flash(f'Invalid input: {str(e)}', 'error')
         except Exception as e:
-            flash(f'Error: {str(e)}', 'error')
+            flash(f'Error adding expense: {str(e)}', 'error')
             db.session.rollback()
     
     return render_template('add_expense.html', categories=categories, now=datetime.now())
 
+@app.route('/add_category', methods=['POST'])
+def add_category():
+    """Add a new category"""
+    category_name = request.form.get('category_name')
+    category_budget = request.form.get('category_budget', 0)
+    
+    if not category_name:
+        flash('Please enter a category name', 'error')
+        return redirect(url_for('add_expense'))
+    
+    # Check if category already exists
+    existing = Category.query.filter_by(name=category_name).first()
+    if existing:
+        flash(f'Category "{category_name}" already exists!', 'error')
+        return redirect(url_for('add_expense'))
+    
+    try:
+        new_category = Category(name=category_name, budget=float(category_budget))
+        db.session.add(new_category)
+        db.session.commit()
+        flash(f'Category "{category_name}" added successfully!', 'success')
+    except Exception as e:
+        flash(f'Error adding category: {str(e)}', 'error')
+        db.session.rollback()
+    
+    return redirect(url_for('add_expense'))
+
+@app.route('/edit/<int:expense_id>', methods=['GET', 'POST'])
+def edit_expense(expense_id):
+    """Edit an existing expense"""
+    expense = Expense.query.get_or_404(expense_id)
+    categories = Category.query.all()
+    
+    if request.method == 'POST':
+        category_id = request.form.get('category_id')
+        item_name = request.form.get('item_name')
+        amount = request.form.get('amount')
+        quantity = request.form.get('quantity', 1)
+        date_str = request.form.get('date')
+        
+        # Validate
+        if not category_id:
+            flash('Please select a category', 'error')
+            return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+        
+        if not item_name:
+            flash('Please enter an item name', 'error')
+            return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+        
+        if not amount:
+            flash('Please enter an amount', 'error')
+            return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+        
+        try:
+            expense.category_id = int(category_id)
+            expense.item_name = item_name
+            expense.amount = float(amount)
+            expense.quantity = int(quantity)
+            expense.total = float(amount) * int(quantity)
+            expense.date = date_str
+            
+            db.session.commit()
+            flash('Expense updated successfully!', 'success')
+            return redirect(url_for('view_expenses'))
+            
+        except ValueError as e:
+            flash(f'Invalid input: {str(e)}', 'error')
+        except Exception as e:
+            flash(f'Error updating expense: {str(e)}', 'error')
+            db.session.rollback()
+    
+    return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
+
 @app.route('/expenses')
 def view_expenses():
-    """View expenses"""
+    """View all expenses with filtering"""
     try:
-        expenses = Expense.query.join(Category).order_by(Expense.date.desc()).all()
+        category_filter = request.args.get('category', 'All')
+        date_filter = request.args.get('date', '')
+        
+        query = Expense.query.join(Category)
+        
+        if category_filter != 'All':
+            query = query.filter(Category.name == category_filter)
+        
+        if date_filter:
+            query = query.filter(Expense.date == date_filter)
+        
+        expenses = query.order_by(Expense.date.desc()).all()
         categories = Category.query.all()
+        
         total = sum(e.total for e in expenses)
+        
         return render_template('view_expenses.html', 
                              expenses=expenses, 
                              categories=categories,
-                             category_filter='All',
-                             date_filter='',
+                             category_filter=category_filter,
+                             date_filter=date_filter,
                              total=total)
     except Exception as e:
-        return f"<h1>Error on Expenses Page</h1><p>{str(e)}</p>"
+        print(f"Expenses error: {str(e)}")
+        try:
+            categories = Category.query.all()
+        except:
+            categories = []
+        return render_template('view_expenses.html', 
+                             expenses=[], 
+                             categories=categories,
+                             category_filter='All',
+                             date_filter='',
+                             total=0)
+
+@app.route('/export_csv')
+def export_csv():
+    """Export expenses to CSV"""
+    try:
+        category_filter = request.args.get('category', 'All')
+        date_filter = request.args.get('date', '')
+        
+        query = Expense.query.join(Category)
+        
+        if category_filter != 'All':
+            query = query.filter(Category.name == category_filter)
+        
+        if date_filter:
+            query = query.filter(Expense.date == date_filter)
+        
+        expenses = query.order_by(Expense.date.desc()).all()
+        
+        if not expenses:
+            flash('No expenses to export!', 'error')
+            return redirect(url_for('view_expenses'))
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Date', 'Category', 'Item Name', 'Quantity', 'Amount (KSH)', 'Total (KSH)'])
+        
+        for expense in expenses:
+            writer.writerow([
+                expense.date,
+                expense.category_ref.name,
+                expense.item_name,
+                expense.quantity,
+                f"{expense.amount:.2f}",
+                f"{expense.total:.2f}"
+            ])
+        
+        output.seek(0)
+        filename = f"expenses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        return send_file(
+            BytesIO(output.getvalue().encode('utf-8-sig')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        flash(f'Export error: {str(e)}', 'error')
+        return redirect(url_for('view_expenses'))
+
+@app.route('/export_excel')
+def export_excel():
+    """Export expenses to Excel"""
+    try:
+        category_filter = request.args.get('category', 'All')
+        date_filter = request.args.get('date', '')
+        
+        query = Expense.query.join(Category)
+        
+        if category_filter != 'All':
+            query = query.filter(Category.name == category_filter)
+        
+        if date_filter:
+            query = query.filter(Expense.date == date_filter)
+        
+        expenses = query.order_by(Expense.date.desc()).all()
+        
+        if not expenses:
+            flash('No expenses to export!', 'error')
+            return redirect(url_for('view_expenses'))
+        
+        try:
+            import pandas as pd
+            
+            data = []
+            for expense in expenses:
+                data.append({
+                    'Date': expense.date,
+                    'Category': expense.category_ref.name,
+                    'Item Name': expense.item_name,
+                    'Quantity': expense.quantity,
+                    'Amount (KSH)': expense.amount,
+                    'Total (KSH)': expense.total
+                })
+            
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Expenses', index=False)
+            
+            output.seek(0)
+            filename = f"expenses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=filename
+            )
+        except ImportError:
+            # Fallback to CSV if pandas not installed
+            return redirect(url_for('export_csv'))
+            
+    except Exception as e:
+        flash(f'Export error: {str(e)}', 'error')
+        return redirect(url_for('view_expenses'))
 
 @app.route('/budgets', methods=['GET', 'POST'])
 def manage_budgets():
-    """Manage budgets"""
+    """Manage category budgets"""
     if request.method == 'POST':
         try:
             for key, value in request.form.items():
                 if key.startswith('budget_'):
                     category_id = int(key.split('_')[1])
                     budget = float(value)
+                    
                     category = Category.query.get(category_id)
                     if category:
                         category.budget = budget
+            
             db.session.commit()
             flash('Budgets updated successfully!', 'success')
         except Exception as e:
-            flash(f'Error: {str(e)}', 'error')
+            flash(f'Error updating budgets: {str(e)}', 'error')
+            db.session.rollback()
+        
         return redirect(url_for('manage_budgets'))
     
     categories = Category.query.all()
@@ -211,51 +446,60 @@ def manage_budgets():
 
 @app.route('/delete/<int:expense_id>', methods=['POST'])
 def delete_expense(expense_id):
+    """Delete an expense"""
     expense = Expense.query.get_or_404(expense_id)
     db.session.delete(expense)
     db.session.commit()
-    flash('Expense deleted!', 'success')
+    flash('Expense deleted successfully!', 'success')
     return redirect(url_for('view_expenses'))
 
 @app.route('/clear_all', methods=['POST'])
 def clear_all_expenses():
+    """Clear all expenses"""
     try:
         Expense.query.delete()
         db.session.commit()
         flash('All expenses cleared!', 'success')
     except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
+        flash(f'Error clearing expenses: {str(e)}', 'error')
+        db.session.rollback()
+    
     return redirect(url_for('view_expenses'))
 
 @app.route('/debug/health')
 def health_check():
+    """Health check endpoint"""
     return {
         'status': 'OK',
         'timestamp': datetime.now().isoformat(),
-        'database_url': 'Set' if os.environ.get('DATABASE_URL') else 'Not Set'
+        'database_url': 'Set' if os.environ.get('DATABASE_URL') else 'Not Set',
+        'database_type': 'PostgreSQL' if os.environ.get('DATABASE_URL') else 'SQLite'
     }
 
 @app.route('/debug/db')
 def debug_db():
+    """Debug endpoint to check database"""
     try:
         categories = Category.query.all()
         expenses = Expense.query.all()
         return {
+            'status': 'OK',
             'category_count': len(categories),
             'expense_count': len(expenses),
-            'categories': [c.name for c in categories],
-            'recent_expenses': [{'id': e.id, 'item': e.item_name, 'total': e.total} for e in expenses[:5]]
+            'categories': [{'id': c.id, 'name': c.name, 'budget': c.budget} for c in categories],
+            'recent_expenses': [{'id': e.id, 'item': e.item_name, 'total': e.total, 'date': e.date} for e in expenses[:5]]
         }
     except Exception as e:
         return {'error': str(e)}, 500
 
 @app.errorhandler(404)
 def not_found(error):
-    return "<h1>404 - Page Not Found</h1><p>The page you're looking for doesn't exist.</p>", 404
+    return render_template('404.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return f"<h1>500 - Internal Server Error</h1><p>{str(error)}</p>", 500
+    db.session.rollback()
+    return render_template('500.html'), 500
 
 @app.context_processor
 def inject_now():

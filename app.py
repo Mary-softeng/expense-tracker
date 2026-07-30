@@ -12,18 +12,14 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 # Database configuration for Render
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
-    # Fix for PostgreSQL on Render
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # Fallback to SQLite with persistent storage
-    # Create data directory if it doesn't exist
+    # Local development with SQLite
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
-    
-    # Use SQLite file in persistent directory
     db_path = os.path.join(data_dir, 'expenses.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
@@ -53,7 +49,7 @@ def init_db():
     with app.app_context():
         db.create_all()
         
-        # Check if categories exist
+        # Add default categories if they don't exist
         if Category.query.count() == 0:
             default_categories = [
                 ('Fare', 4000),
@@ -79,68 +75,89 @@ init_db()
 @app.route('/')
 def index():
     """Home page - landing page"""
-    total_expenses = Expense.query.count()
-    total_amount = db.session.query(func.sum(Expense.total)).scalar() or 0
-    categories = Category.query.count()
-    
-    current_month = datetime.now().strftime('%Y-%m')
-    monthly_spent = db.session.query(func.sum(Expense.total)).filter(
-        Expense.date.like(f'{current_month}%')
-    ).scalar() or 0
-    
-    return render_template('index.html',
-                         total_expenses=total_expenses,
-                         total_amount=float(total_amount),
-                         categories=categories,
-                         monthly_spent=float(monthly_spent))
+    try:
+        total_expenses = Expense.query.count()
+        total_amount = db.session.query(func.sum(Expense.total)).scalar() or 0
+        categories = Category.query.count()
+        
+        current_month = datetime.now().strftime('%Y-%m')
+        monthly_spent = db.session.query(func.sum(Expense.total)).filter(
+            Expense.date.like(f'{current_month}%')
+        ).scalar() or 0
+        
+        return render_template('index.html',
+                             total_expenses=total_expenses,
+                             total_amount=float(total_amount),
+                             categories=categories,
+                             monthly_spent=float(monthly_spent))
+    except Exception as e:
+        print(f"Index error: {str(e)}")
+        return render_template('index.html', 
+                             total_expenses=0, 
+                             total_amount=0, 
+                             categories=0, 
+                             monthly_spent=0)
 
 @app.route('/dashboard')
 def dashboard():
     """Dashboard with summary and charts"""
-    categories = Category.query.all()
-    
-    current_month = datetime.now().strftime('%Y-%m')
-    
-    monthly_data = []
-    total_budget = 0
-    total_spent = 0
-    
-    for category in categories:
-        monthly_spent = db.session.query(func.sum(Expense.total)).filter(
-            Expense.category_id == category.id,
-            Expense.date.like(f'{current_month}%')
-        ).scalar() or 0
+    try:
+        categories = Category.query.all()
         
-        monthly_spent = float(monthly_spent) if monthly_spent else 0.0
+        current_month = datetime.now().strftime('%Y-%m')
         
-        total_spent += monthly_spent
-        total_budget += category.budget
+        monthly_data = []
+        total_budget = 0
+        total_spent = 0
         
-        percentage = (monthly_spent / category.budget * 100) if category.budget > 0 else 0
+        for category in categories:
+            monthly_spent = db.session.query(func.sum(Expense.total)).filter(
+                Expense.category_id == category.id,
+                Expense.date.like(f'{current_month}%')
+            ).scalar() or 0
+            
+            monthly_spent = float(monthly_spent) if monthly_spent else 0.0
+            
+            total_spent += monthly_spent
+            total_budget += category.budget
+            
+            percentage = (monthly_spent / category.budget * 100) if category.budget > 0 else 0
+            
+            monthly_data.append({
+                'name': category.name,
+                'budget': float(category.budget),
+                'spent': monthly_spent,
+                'remaining': float(category.budget - monthly_spent),
+                'percentage': float(min(percentage, 100))
+            })
         
-        monthly_data.append({
-            'name': category.name,
-            'budget': float(category.budget),
-            'spent': monthly_spent,
-            'remaining': float(category.budget - monthly_spent),
-            'percentage': float(min(percentage, 100))
-        })
-    
-    recent_expenses = Expense.query.join(Category).order_by(
-        Expense.date.desc(), Expense.created_at.desc()
-    ).limit(10).all()
-    
-    return render_template('dashboard.html',
-                         monthly_data=monthly_data,
-                         recent_expenses=recent_expenses,
-                         total_budget=float(total_budget),
-                         total_spent=float(total_spent),
-                         current_month=current_month)
+        recent_expenses = Expense.query.join(Category).order_by(
+            Expense.date.desc(), Expense.created_at.desc()
+        ).limit(10).all()
+        
+        return render_template('dashboard.html',
+                             monthly_data=monthly_data,
+                             recent_expenses=recent_expenses,
+                             total_budget=float(total_budget),
+                             total_spent=float(total_spent),
+                             current_month=current_month)
+    except Exception as e:
+        print(f"Dashboard error: {str(e)}")
+        flash(f'Error loading dashboard: {str(e)}', 'error')
+        return render_template('dashboard.html',
+                             monthly_data=[],
+                             recent_expenses=[],
+                             total_budget=0,
+                             total_spent=0,
+                             current_month=datetime.now().strftime('%Y-%m'))
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_expense():
     """Add a new expense"""
-    categories = Category.query.all()
+    try:
+        categories = Category.query.all()
+    except:
+        categories = []
     
     if request.method == 'POST':
         category_id = request.form.get('category_id')
@@ -188,6 +205,46 @@ def add_expense():
             db.session.rollback()
     
     return render_template('add_expense.html', categories=categories, now=datetime.now())
+
+@app.route('/expenses')
+def view_expenses():
+    """View all expenses with filtering"""
+    try:
+        category_filter = request.args.get('category', 'All')
+        date_filter = request.args.get('date', '')
+        
+        query = Expense.query.join(Category)
+        
+        if category_filter != 'All':
+            query = query.filter(Category.name == category_filter)
+        
+        if date_filter:
+            query = query.filter(Expense.date == date_filter)
+        
+        expenses = query.order_by(Expense.date.desc()).all()
+        categories = Category.query.all()
+        
+        total = sum(e.total for e in expenses)
+        
+        return render_template('view_expenses.html', 
+                             expenses=expenses, 
+                             categories=categories,
+                             category_filter=category_filter,
+                             date_filter=date_filter,
+                             total=total)
+    except Exception as e:
+        print(f"Expenses error: {str(e)}")
+        flash(f'Error loading expenses: {str(e)}', 'error')
+        try:
+            categories = Category.query.all()
+        except:
+            categories = []
+        return render_template('view_expenses.html', 
+                             expenses=[], 
+                             categories=categories,
+                             category_filter='All',
+                             date_filter='',
+                             total=0)
 
 @app.route('/add_category', methods=['POST'])
 def add_category():
@@ -262,31 +319,64 @@ def edit_expense(expense_id):
     
     return render_template('edit_expense.html', expense=expense, categories=categories, now=datetime.now())
 
-@app.route('/expenses')
-def view_expenses():
-    """View all expenses with filtering"""
-    category_filter = request.args.get('category', 'All')
-    date_filter = request.args.get('date', '')
-    
-    query = Expense.query.join(Category)
-    
-    if category_filter != 'All':
-        query = query.filter(Category.name == category_filter)
-    
-    if date_filter:
-        query = query.filter(Expense.date == date_filter)
-    
-    expenses = query.order_by(Expense.date.desc()).all()
-    categories = Category.query.all()
-    
-    total = sum(e.total for e in expenses)
-    
-    return render_template('view_expenses.html', 
-                         expenses=expenses, 
-                         categories=categories,
-                         category_filter=category_filter,
-                         date_filter=date_filter,
-                         total=total)
+@app.route('/export_excel')
+def export_excel():
+    """Export expenses to Excel"""
+    try:
+        category_filter = request.args.get('category', 'All')
+        date_filter = request.args.get('date', '')
+        
+        query = Expense.query.join(Category)
+        
+        if category_filter != 'All':
+            query = query.filter(Category.name == category_filter)
+        
+        if date_filter:
+            query = query.filter(Expense.date == date_filter)
+        
+        expenses = query.order_by(Expense.date.desc()).all()
+        
+        if not expenses:
+            flash('No expenses to export!', 'error')
+            return redirect(url_for('view_expenses'))
+        
+        # Try Excel export with pandas
+        try:
+            import pandas as pd
+            
+            data = []
+            for expense in expenses:
+                data.append({
+                    'Date': expense.date,
+                    'Category': expense.category_ref.name,
+                    'Item Name': expense.item_name,
+                    'Quantity': expense.quantity,
+                    'Amount (KSH)': expense.amount,
+                    'Total (KSH)': expense.total
+                })
+            
+            df = pd.DataFrame(data)
+            output = BytesIO()
+            
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Expenses', index=False)
+            
+            output.seek(0)
+            filename = f"expenses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=filename
+            )
+        except ImportError:
+            # Fallback to CSV if pandas not installed
+            return redirect(url_for('export_csv_simple'))
+            
+    except Exception as e:
+        flash(f'Export error: {str(e)}', 'error')
+        return redirect(url_for('view_expenses'))
 
 @app.route('/export_csv_simple')
 def export_csv_simple():
@@ -382,6 +472,21 @@ def clear_all_expenses():
         db.session.rollback()
     
     return redirect(url_for('view_expenses'))
+
+@app.route('/debug/expenses')
+def debug_expenses():
+    """Debug endpoint to check expenses"""
+    try:
+        expenses = Expense.query.all()
+        categories = Category.query.all()
+        return {
+            'expense_count': len(expenses),
+            'category_count': len(categories),
+            'expenses': [{'id': e.id, 'item': e.item_name, 'total': e.total} for e in expenses[:5]],
+            'categories': [c.name for c in categories]
+        }
+    except Exception as e:
+        return {'error': str(e)}, 500
 
 @app.errorhandler(404)
 def not_found(error):

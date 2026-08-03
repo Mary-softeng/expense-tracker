@@ -9,24 +9,19 @@ from io import StringIO, BytesIO
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
-# Database configuration
-database_url = os.environ.get('DATABASE_URL')
-if database_url:
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-else:
-    data_dir = '/data' if os.path.exists('/data') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    db_path = os.path.join(data_dir, 'expenses.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+# Database configuration - Use absolute path for PythonAnywhere
+# Get the directory where this file is located
+basedir = os.path.dirname(os.path.abspath(__file__))
 
+# Create data directory if it doesn't exist
+data_dir = os.path.join(basedir, 'data')
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+
+# Use SQLite with absolute path
+db_path = os.path.join(data_dir, 'expenses.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,
-    'pool_recycle': 300,
-}
 
 db = SQLAlchemy(app)
 
@@ -70,9 +65,9 @@ def init_db():
             print(f"✅ Database ready with {Category.query.count()} categories")
 
 # Call init_db on startup
-with app.app_context():
-    init_db()
+init_db()
 
+# All your routes here (keep the same as before)
 @app.route('/')
 def index():
     """Home page - landing page"""
@@ -412,7 +407,6 @@ def export_excel():
                 download_name=filename
             )
         except ImportError:
-            # Fallback to CSV if pandas not installed
             return redirect(url_for('export_csv'))
             
     except Exception as e:
@@ -472,8 +466,9 @@ def health_check():
     return {
         'status': 'OK',
         'timestamp': datetime.now().isoformat(),
-        'database_url': 'Set' if os.environ.get('DATABASE_URL') else 'Not Set',
-        'database_type': 'PostgreSQL' if os.environ.get('DATABASE_URL') else 'SQLite'
+        'database_path': db_path,
+        'expense_count': Expense.query.count(),
+        'category_count': Category.query.count()
     }
 
 @app.route('/debug/db')
